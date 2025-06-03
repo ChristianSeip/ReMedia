@@ -1,9 +1,17 @@
 import logging
-from core.config import PROJECT_ROOT
+from pathlib import Path
 
+def find_project_root(marker="pyproject.toml") -> Path:
+    current = Path(__file__).resolve()
+    while current != current.parent:
+        if (current / marker).exists():
+            return current
+        current = current.parent
+    raise RuntimeError(f"Project root with {marker} not found.")
+
+PROJECT_ROOT = find_project_root()
 LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(exist_ok=True)
-
 LOG_FILE = LOG_DIR / "remedia.log"
 
 logging.basicConfig(

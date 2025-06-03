@@ -1,4 +1,4 @@
-from utils.logger import get_logger
+from remedia.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -14,7 +14,7 @@ def print_start_info(media_count: int):
 
 def print_welcome():
     print("=" * 60)
-    print("ReMedia v0.2.0 - Duplicate detection for media files")
+    print("ReMedia v0.3.0 - Duplicate detection for media files")
     print("Created by Christian Seip • https://www.seip.io")
     print("=" * 60 + "\n")
 

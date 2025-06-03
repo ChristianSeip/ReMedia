@@ -1,5 +1,5 @@
 from pathlib import Path
-from core.constants import DEFAULT_MEDIA_DIR, ACCURACY_STEPS, DEFAULT_TOLERANCE
+from remedia.core.constants import DEFAULT_MEDIA_DIR, ACCURACY_STEPS, DEFAULT_TOLERANCE
 
 def get_media_dir() -> Path:
     user_input = input("Path to media folder [Enter for 'images']: ").strip()

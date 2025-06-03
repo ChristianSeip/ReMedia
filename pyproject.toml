@@ -1,6 +1,6 @@
 [project]
 name = "remedia"
-version = "0.2.0"
+version = "0.3.0"
 description = "Duplicate detection for media files (images, videos, more)"
 authors = [
   { name = "Christian Seip", email = "christian@seip.io" }
@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.scripts]
-remedia = "main:run_cli"
+remedia = "remedia.main:run_cli"
 
 [build-system]
 requires = ["setuptools>=61.0"]

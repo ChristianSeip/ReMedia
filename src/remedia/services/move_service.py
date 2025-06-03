@@ -1,8 +1,8 @@
 from pathlib import Path
 import shutil
 from tqdm import tqdm
-from core.constants import DEFAULT_MEDIA_DIR
-from utils.logger import get_logger
+from remedia.core.constants import DEFAULT_MEDIA_DIR
+from remedia.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

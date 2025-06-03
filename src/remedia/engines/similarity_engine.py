@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from domain.media_object import MediaObject
+from remedia.domain.media_object import MediaObject
 
 class SimilarityEngine(ABC):
     @abstractmethod

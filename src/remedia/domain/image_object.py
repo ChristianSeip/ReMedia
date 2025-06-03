@@ -1,6 +1,6 @@
 from PIL import Image
 import imagehash
-from domain.media_object import MediaObject
+from remedia.domain.media_object import MediaObject
 
 class ImageObject(MediaObject):
     def __init__(self, path):

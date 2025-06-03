@@ -1,17 +1,17 @@
-from core.constants import ACCURACY_STEPS, DEFAULT_TOLERANCE, ACCURACY_TO_RELATED_THRESHOLD
-from cli.input_handler import get_detection_engine, get_media_dir, get_tolerance
-from cli.output_handler import (
+from remedia.core.constants import ACCURACY_STEPS, DEFAULT_TOLERANCE, ACCURACY_TO_RELATED_THRESHOLD
+from remedia.cli.input_handler import get_detection_engine, get_media_dir, get_tolerance
+from remedia.cli.output_handler import (
     print_start_info,
     print_group_summary,
     print_welcome,
     print_no_duplicates,
 )
-from services.group_service import GroupService
-from services.move_service import MoveService
-from engines.hash_engine import HashEngine
-from engines.related_engine import RelatedEngine
-from utils.loader import load_valid_images
-from utils.logger import get_logger
+from remedia.services.group_service import GroupService
+from remedia.services.move_service import MoveService
+from remedia.engines.hash_engine import HashEngine
+from remedia.engines.related_engine import RelatedEngine
+from remedia.utils.loader import load_valid_images
+from remedia.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

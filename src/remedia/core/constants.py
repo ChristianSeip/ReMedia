@@ -1,4 +1,4 @@
-from core.config import PROJECT_ROOT
+from remedia.core.config import PROJECT_ROOT
 
 DEFAULT_MEDIA_DIR = PROJECT_ROOT / "images"
 

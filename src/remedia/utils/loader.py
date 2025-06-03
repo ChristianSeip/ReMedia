@@ -1,6 +1,6 @@
 from pathlib import Path
 from PIL import Image
-from domain.image_object import ImageObject
+from remedia.domain.image_object import ImageObject
 from tqdm import tqdm
 
 def load_valid_images(directory: Path):
