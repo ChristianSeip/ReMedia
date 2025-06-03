@@ -17,14 +17,14 @@ class MoveService:
         self.duplicates_base.mkdir(exist_ok=True)
 
     def move_all(self, groups: list[list]):
-        for group in tqdm(groups, desc="📦 Moving duplicate media"):
-            self.move_group(group)
+        for index, group in enumerate(tqdm(groups, desc="Moving duplicate media")):
+            self.move_group(group, index)
 
-    def move_group(self, group: list):
+    def move_group(self, group: list, index: int):
         if not group:
             return
 
-        base_name = group[0].path.stem
+        base_name = f"group_{index:04d}"
         target_dir = self.duplicates_base / base_name
         target_dir.mkdir(exist_ok=True)
 
