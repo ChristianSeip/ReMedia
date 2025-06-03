@@ -4,16 +4,22 @@ from itertools import combinations
 from multiprocessing import Pool, cpu_count
 import os
 
+_global_embeddings = None
+_global_threshold = None
+
+def init_worker(embeddings, threshold):
+    global _global_embeddings, _global_threshold
+    _global_embeddings = embeddings
+    _global_threshold = threshold
 
 def compare_pair(pair):
-    a, b, threshold, embeddings = pair
-    if a not in embeddings or b not in embeddings:
+    a, b = pair
+    if a not in _global_embeddings or b not in _global_embeddings:
         return None
-    sim = (embeddings[a] @ embeddings[b].T).item()
-    if sim >= threshold:
+    sim = (_global_embeddings[a] @ _global_embeddings[b].T).item()
+    if sim >= _global_threshold:
         return (a, b)
     return None
-
 
 class UnionFind:
     def __init__(self):
@@ -36,7 +42,6 @@ class UnionFind:
             result[root].append(item)
         return list(result.values())
 
-
 class GroupService:
     def __init__(self, engine, max_workers=None, strict_mode=False):
         self.engine = engine
@@ -58,15 +63,20 @@ class GroupService:
         embeddings = self.engine.embeddings
         threshold = self.engine.threshold
         groups = []
+        already_grouped = set()
 
         all_pairs = [
-            (media_list[i], media_list[j], threshold, embeddings)
+            (media_list[i], media_list[j])
             for i in range(len(media_list))
             for j in range(i + 1, len(media_list))
         ]
 
         similarity_map = defaultdict(list)
-        with Pool(processes=self.max_workers or cpu_count()) as pool:
+        with Pool(
+            processes=self.max_workers,
+            initializer=init_worker,
+            initargs=(embeddings, threshold)
+        ) as pool:
             with tqdm(total=len(all_pairs), desc="Comparing all pairs for strict groups") as pbar:
                 for result in pool.imap_unordered(compare_pair, all_pairs, chunksize=32):
                     if result:
@@ -76,6 +86,9 @@ class GroupService:
                     pbar.update(1)
 
         for anchor in tqdm(media_list, desc="Building strict groups"):
+            if anchor in already_grouped:
+                continue
+
             matched = similarity_map.get(anchor, [])
             candidate_group = [anchor] + matched
 
@@ -85,20 +98,26 @@ class GroupService:
             if self.is_fully_similar_group(candidate_group, threshold):
                 if not any(set(candidate_group).issubset(set(g)) for g in groups):
                     groups.append(candidate_group)
+                    already_grouped.update(candidate_group)
 
         return groups
 
     def compare_pairs_parallel(self, media_list):
         embeddings = self.engine.embeddings
         threshold = self.engine.threshold
+
         all_pairs = [
-            (media_list[i], media_list[j], threshold, embeddings)
+            (media_list[i], media_list[j])
             for i in range(len(media_list))
             for j in range(i + 1, len(media_list))
         ]
 
         results = []
-        with Pool(processes=self.max_workers or cpu_count()) as pool:
+        with Pool(
+            processes=self.max_workers,
+            initializer=init_worker,
+            initargs=(embeddings, threshold)
+        ) as pool:
             with tqdm(total=len(all_pairs), desc="Comparing media pairs") as pbar:
                 for result in pool.imap_unordered(compare_pair, all_pairs, chunksize=32):
                     if result:
@@ -109,4 +128,7 @@ class GroupService:
 
     def is_fully_similar_group(self, group, threshold):
         embeddings = self.engine.embeddings
-        return all((embeddings[a] @ embeddings[b].T).item() >= threshold for a, b in combinations(group, 2))
+        return all(
+            (embeddings[a] @ embeddings[b].T).item() >= threshold
+            for a, b in combinations(group, 2)
+        )
