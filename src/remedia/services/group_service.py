@@ -5,6 +5,7 @@ from itertools import combinations
 from multiprocessing import Pool, cpu_count
 import os
 
+
 def compare_pair(pair):
     a, b, threshold, embeddings = pair
     if a not in embeddings or b not in embeddings:
@@ -13,6 +14,7 @@ def compare_pair(pair):
     if sim >= threshold:
         return (a, b)
     return None
+
 
 class UnionFind:
     def __init__(self):
@@ -34,6 +36,7 @@ class UnionFind:
             root = self.find(item)
             result[root].append(item)
         return list(result.values())
+
 
 class GroupService:
     def __init__(self, engine, max_workers=None, strict_mode=False):
@@ -57,24 +60,22 @@ class GroupService:
         threshold = self.engine.threshold
         groups = []
 
-        for anchor in tqdm(media_list, desc="Finding strict groups"):
-            candidates = [
-                (anchor, other, threshold, embeddings)
-                for other in media_list if anchor != other
-            ]
-
-            with Pool(processes=self.max_workers or cpu_count()) as pool:
+        with Pool(processes=self.max_workers or cpu_count()) as pool:
+            for anchor in tqdm(media_list, desc="Finding strict groups"):
+                candidates = [
+                    (anchor, other, threshold, embeddings)
+                    for other in media_list if anchor != other
+                ]
                 matches = pool.map(compare_pair, candidates)
+                matched = [b for result in matches if result for b in result if b != anchor]
+                candidate_group = [anchor] + matched
 
-            matched = [b for result in matches if result for b in result if b != anchor]
-            candidate_group = [anchor] + matched
+                if len(candidate_group) <= 1:
+                    continue
 
-            if len(candidate_group) <= 1:
-                continue
-
-            if self.is_fully_similar_group(candidate_group, threshold):
-                if not any(set(candidate_group).issubset(set(g)) for g in groups):
-                    groups.append(candidate_group)
+                if self.is_fully_similar_group(candidate_group, threshold):
+                    if not any(set(candidate_group).issubset(set(g)) for g in groups):
+                        groups.append(candidate_group)
 
         return groups
 
@@ -86,7 +87,7 @@ class GroupService:
             for i in range(len(media_list))
             for j in range(i + 1, len(media_list))
         ]
-        
+
         results = []
         with Pool(processes=self.max_workers or cpu_count()) as pool:
             with tqdm(total=len(all_pairs), desc="Comparing media pairs") as pbar:
