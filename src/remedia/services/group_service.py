@@ -21,6 +21,10 @@ def compare_pair(pair):
         return (a, b)
     return None
 
+def compare_pair_hash(pair):
+    a, b, engine = pair
+    return (a, b) if engine.are_similar(a, b) else None
+
 class UnionFind:
     def __init__(self):
         self.parent = {}
@@ -49,7 +53,7 @@ class GroupService:
         self.strict_mode = strict_mode
 
     def find_duplicates(self, media_list):
-        if self.strict_mode:
+        if self.strict_mode and self.engine.__class__.__name__ == "RelatedEngine":
             return self._find_strict_groups(media_list)
 
         uf = UnionFind()
@@ -77,7 +81,7 @@ class GroupService:
             initializer=init_worker,
             initargs=(embeddings, threshold)
         ) as pool:
-            with tqdm(total=len(all_pairs), desc="Comparing all pairs for strict groups") as pbar:
+            with tqdm(total=len(all_pairs), desc="Comparing all pairs") as pbar:
                 for result in pool.imap_unordered(compare_pair, all_pairs, chunksize=32):
                     if result:
                         a, b = result
@@ -85,7 +89,7 @@ class GroupService:
                         similarity_map[b].append(a)
                     pbar.update(1)
 
-        for anchor in tqdm(media_list, desc="Building strict groups"):
+        for anchor in tqdm(media_list, desc="Building groups"):
             if anchor in already_grouped:
                 continue
 
@@ -103,9 +107,14 @@ class GroupService:
         return groups
 
     def compare_pairs_parallel(self, media_list):
+        if self.engine.__class__.__name__ == "RelatedEngine":
+            return self._compare_ai_pairs_parallel(media_list)
+        else:
+            return self._compare_hash_pairs_parallel(media_list)
+
+    def _compare_ai_pairs_parallel(self, media_list):
         embeddings = self.engine.embeddings
         threshold = self.engine.threshold
-
         all_pairs = [
             (media_list[i], media_list[j])
             for i in range(len(media_list))
@@ -120,6 +129,23 @@ class GroupService:
         ) as pool:
             with tqdm(total=len(all_pairs), desc="Comparing media pairs") as pbar:
                 for result in pool.imap_unordered(compare_pair, all_pairs, chunksize=32):
+                    if result:
+                        results.append(result)
+                    pbar.update(1)
+
+        return results
+
+    def _compare_hash_pairs_parallel(self, media_list):
+        all_pairs = [
+            (media_list[i], media_list[j], self.engine)
+            for i in range(len(media_list))
+            for j in range(i + 1, len(media_list))
+        ]
+
+        results = []
+        with Pool(processes=self.max_workers) as pool:
+            with tqdm(total=len(all_pairs), desc="Comparing hash pairs") as pbar:
+                for result in pool.imap_unordered(compare_pair_hash, all_pairs, chunksize=32):
                     if result:
                         results.append(result)
                     pbar.update(1)
