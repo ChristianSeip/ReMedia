@@ -8,16 +8,17 @@ from remedia.cli.output_handler import (
 )
 from remedia.services.group_service import GroupService
 from remedia.services.move_service import MoveService
-from remedia.engines.hash_engine import HashEngine
-from remedia.engines.related_engine import RelatedEngine
 from remedia.utils.loader import load_valid_images
-from remedia.utils.logger import get_logger
 
-logger = get_logger(__name__)
-
+logger = None
 
 def run_cli():
     print_welcome()
+
+    global logger
+    if logger is None:
+        from remedia.utils.logger import get_logger
+        logger = get_logger(__name__)
 
     media_dir = get_media_dir()
     if not media_dir:
@@ -30,8 +31,10 @@ def run_cli():
     related_threshold = ACCURACY_TO_RELATED_THRESHOLD.get(tolerance, 0.90)
 
     if engine_choice == 2:
+        from remedia.engines.related_engine import RelatedEngine
         engine = RelatedEngine(threshold=related_threshold)
     else:
+        from remedia.engines.hash_engine import HashEngine
         engine = HashEngine(tolerance=hash_tolerance)
 
     media_files = load_valid_images(media_dir)

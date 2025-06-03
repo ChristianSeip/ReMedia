@@ -1,7 +1,3 @@
-from remedia.utils.logger import get_logger
-
-logger = get_logger(__name__)
-
 def print_group_summary(groups: list):
     print(f"{len(groups)} duplicate group{'s' if len(groups) != 1 else ''} detected.")
     for i, group in enumerate(groups, start=1):

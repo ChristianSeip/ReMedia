@@ -1,5 +1,4 @@
 import torch
-import open_clip
 import os
 from PIL import Image
 from torchvision import transforms
@@ -11,12 +10,14 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 class RelatedEngine(SimilarityEngine):
     def __init__(self, model_name="ViT-B-32", device=None, threshold=0.90):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.model, _, self.preprocess = open_clip.create_model_and_transforms(f"{model_name}-quickgelu", pretrained="openai")
-        self.model.eval().to(self.device)
+        self.model_name = model_name
+        self.model = None
+        self.preprocess = None
         self.threshold = threshold
         self.embeddings = {}
 
     def compute_features(self, media_list):
+        self._ensure_model_loaded()
         for media in tqdm(media_list, desc="Computing AI features", unit="media"):
             try:
                 image = Image.open(media.path).convert("RGB")
@@ -35,3 +36,11 @@ class RelatedEngine(SimilarityEngine):
             return False
         similarity = (emb_a @ emb_b.T).item()
         return similarity >= self.threshold
+
+    def _ensure_model_loaded(self):
+        if self.model is None:
+            import open_clip
+            self.model, _, self.preprocess = open_clip.create_model_and_transforms(
+                f"{self.model_name}-quickgelu", pretrained="openai"
+            )
+            self.model.eval().to(self.device)
