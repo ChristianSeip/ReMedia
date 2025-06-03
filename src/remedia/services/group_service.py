@@ -2,7 +2,17 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from itertools import combinations
+from multiprocessing import Pool, cpu_count
 import os
+
+def compare_pair(pair):
+    a, b, threshold, embeddings = pair
+    if a not in embeddings or b not in embeddings:
+        return None
+    sim = (embeddings[a] @ embeddings[b].T).item()
+    if sim >= threshold:
+        return (a, b)
+    return None
 
 class UnionFind:
     def __init__(self):
@@ -67,25 +77,21 @@ class GroupService:
         return groups
 
     def compare_pairs_parallel(self, media_list):
-        def compare(i, j):
-            a, b = media_list[i], media_list[j]
-            if self.engine.are_similar(a, b):
-                return (a, b)
-            return None
-
-        total = len(media_list)
+        embeddings = self.engine.embeddings
+        threshold = self.engine.threshold
+        all_pairs = [
+            (media_list[i], media_list[j], threshold, embeddings)
+            for i in range(len(media_list))
+            for j in range(i + 1, len(media_list))
+        ]
+        
         results = []
-
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            futures = {
-                executor.submit(compare, i, j): (i, j)
-                for i in range(total) for j in range(i + 1, total)
-            }
-
-            for future in tqdm(as_completed(futures), total=len(futures), desc="Comparing media pairs"):
-                result = future.result()
-                if result:
-                    results.append(result)
+        with Pool(processes=self.max_workers or cpu_count()) as pool:
+            with tqdm(total=len(all_pairs), desc="Comparing media pairs") as pbar:
+                for result in pool.imap_unordered(compare_pair, all_pairs, chunksize=32):
+                    if result:
+                        results.append(result)
+                    pbar.update(1)
 
         return results
 
