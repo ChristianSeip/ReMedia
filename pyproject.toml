@@ -1,6 +1,6 @@
 [project]
 name = "remedia"
-version = "0.4.0"
+version = "0.5.0"
 description = "Duplicate detection for media files (images, videos, more)"
 authors = [
   { name = "Christian Seip", email = "christian@seip.io" }
