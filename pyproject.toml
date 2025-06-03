@@ -1,6 +1,6 @@
 [project]
 name = "remedia"
-version = "0.1.0"
+version = "0.2.0"
 description = "Duplicate detection for media files (images, videos, more)"
 authors = [
   { name = "Christian Seip", email = "christian@seip.io" }
@@ -10,9 +10,11 @@ readme = "README.md"
 requires-python = ">=3.9"
 
 dependencies = [
-  "pillow",
-  "imagehash",
-  "tqdm"
+  "pillow>=10.0.0",
+  "imagehash>=4.3",
+  "tqdm>=4.66",
+  "torch>=2.0",
+  "open-clip-torch>=2.20"
 ]
 
 [project.scripts]

@@ -17,3 +17,15 @@ def get_tolerance() -> int:
     except Exception:
         print("Invalid input - using default accuracy level 3.")
         return DEFAULT_TOLERANCE
+
+def get_detection_engine():
+    print("\nChoose detection engine:")
+    print("1 - Find duplicats")
+    print("2 - Find related images")
+
+    try:
+        choice = int(input("Selection [1]: ").strip())
+    except Exception:
+        choice = 1
+
+    return choice
