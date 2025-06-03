@@ -58,15 +58,17 @@ class GroupService:
         groups = []
 
         for anchor in tqdm(media_list, desc="Finding strict groups"):
-            matched = []
-            for other in media_list:
-                if anchor == other:
-                    continue
-                sim = (embeddings[anchor] @ embeddings[other].T).item()
-                if sim >= threshold:
-                    matched.append(other)
+            candidates = [
+                (anchor, other, threshold, embeddings)
+                for other in media_list if anchor != other
+            ]
 
+            with Pool(processes=self.max_workers or cpu_count()) as pool:
+                matches = pool.map(compare_pair, candidates)
+
+            matched = [b for result in matches if result for b in result if b != anchor]
             candidate_group = [anchor] + matched
+
             if len(candidate_group) <= 1:
                 continue
 
