@@ -35,7 +35,7 @@ class GroupService:
     def find_duplicates(self, media_list):
         return self._find_disjoint_groups(media_list)
 
-    def _find_disjoint_groups(self, media_list):
+    def _find_disjoint_groups(self, media_list, min_match_ratio=0.80):
         unassigned = set(media_list)
         groups = []
 
@@ -46,10 +46,14 @@ class GroupService:
             to_remove = set()
 
             for candidate in candidates:
-                if self.engine.are_similar(anchor, candidate):
-                    if all(self.engine.are_similar(candidate, member) for member in group):
-                        group.append(candidate)
-                        to_remove.add(candidate)
+                match_count = sum(
+                    1 for member in group if self.engine.are_similar(candidate, member)
+                )
+                required_matches = int(len(group) * min_match_ratio)
+
+                if match_count >= required_matches:
+                    group.append(candidate)
+                    to_remove.add(candidate)
 
             unassigned -= to_remove
 
@@ -57,6 +61,7 @@ class GroupService:
                 groups.append(group)
 
         return groups
+
 
     def compare_pairs_parallel(self, media_list):
         if self.engine.__class__.__name__ == "RelatedEngine":
