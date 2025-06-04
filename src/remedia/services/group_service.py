@@ -1,7 +1,7 @@
-from collections import defaultdict
 from tqdm import tqdm
+from multiprocessing import Pool
 from itertools import combinations
-from multiprocessing import Pool, cpu_count
+from collections import defaultdict
 import os
 
 _global_embeddings = None
@@ -25,26 +25,6 @@ def compare_pair_hash(pair):
     a, b, engine = pair
     return (a, b) if engine.are_similar(a, b) else None
 
-class UnionFind:
-    def __init__(self):
-        self.parent = {}
-
-    def find(self, x):
-        if self.parent.get(x) != x:
-            self.parent[x] = self.find(self.parent.get(x, x))
-        return self.parent.get(x, x)
-
-    def union(self, x, y):
-        self.parent.setdefault(x, x)
-        self.parent.setdefault(y, y)
-        self.parent[self.find(y)] = self.find(x)
-
-    def groups(self):
-        result = defaultdict(list)
-        for item in self.parent:
-            root = self.find(item)
-            result[root].append(item)
-        return list(result.values())
 
 class GroupService:
     def __init__(self, engine, max_workers=None, strict_mode=False):
@@ -53,56 +33,32 @@ class GroupService:
         self.strict_mode = strict_mode
 
     def find_duplicates(self, media_list):
-        if self.strict_mode and self.engine.__class__.__name__ == "RelatedEngine":
-            return self._find_strict_groups(media_list)
+        return self._find_disjoint_groups(media_list)
 
-        uf = UnionFind()
-        matches = self.compare_pairs_parallel(media_list)
-        for a, b in matches:
-            uf.union(a, b)
-
-        return [group for group in uf.groups() if len(group) > 1]
-
-    def _find_strict_groups(self, media_list):
-        embeddings = self.engine.embeddings
-        threshold = self.engine.threshold
+    def _find_disjoint_groups(self, media_list, min_match_ratio=0.80):
+        unassigned = set(media_list)
         groups = []
-        already_grouped = set()
 
-        all_pairs = [
-            (media_list[i], media_list[j])
-            for i in range(len(media_list))
-            for j in range(i + 1, len(media_list))
-        ]
+        while unassigned:
+            anchor = unassigned.pop()
+            group = [anchor]
+            candidates = list(unassigned)
+            to_remove = set()
 
-        similarity_map = defaultdict(list)
-        with Pool(
-            processes=self.max_workers,
-            initializer=init_worker,
-            initargs=(embeddings, threshold)
-        ) as pool:
-            with tqdm(total=len(all_pairs), desc="Comparing all pairs") as pbar:
-                for result in pool.imap_unordered(compare_pair, all_pairs, chunksize=32):
-                    if result:
-                        a, b = result
-                        similarity_map[a].append(b)
-                        similarity_map[b].append(a)
-                    pbar.update(1)
+            for candidate in candidates:
+                match_count = sum(
+                    1 for member in group if self.engine.are_similar(candidate, member)
+                )
+                required_matches = int(len(group) * min_match_ratio)
 
-        for anchor in tqdm(media_list, desc="Building groups"):
-            if anchor in already_grouped:
-                continue
+                if match_count >= required_matches:
+                    group.append(candidate)
+                    to_remove.add(candidate)
 
-            matched = similarity_map.get(anchor, [])
-            candidate_group = [anchor] + matched
+            unassigned -= to_remove
 
-            if len(candidate_group) <= 1:
-                continue
-
-            if self.is_fully_similar_group(candidate_group, threshold):
-                if not any(set(candidate_group).issubset(set(g)) for g in groups):
-                    groups.append(candidate_group)
-                    already_grouped.update(candidate_group)
+            if len(group) > 1:
+                groups.append(group)
 
         return groups
 
@@ -151,10 +107,3 @@ class GroupService:
                     pbar.update(1)
 
         return results
-
-    def is_fully_similar_group(self, group, threshold):
-        embeddings = self.engine.embeddings
-        return all(
-            (embeddings[a] @ embeddings[b].T).item() >= threshold
-            for a, b in combinations(group, 2)
-        )
